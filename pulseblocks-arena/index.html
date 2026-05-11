@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07111f" />
+    <title>GridRush Arena</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css?v=drag-6" />
+    <script defer src="/app.js?v=drag-6"></script>
+  </head>
+  <body data-theme="neon">
+    <div class="ambient-grid" aria-hidden="true"></div>
+    <main id="app" class="app-shell">
+      <section id="profileScreen" class="screen profile-screen active" aria-labelledby="profileTitle">
+        <div class="brand-mark">
+          <img src="/assets/logo.svg" alt="GridRush Arena" />
+        </div>
+        <div class="profile-panel">
+          <p class="kicker">Arena puzzle online</p>
+          <h1 id="profileTitle">GridRush Arena</h1>
+          <label class="name-field" for="playerName">Nome giocatore</label>
+          <div class="entry-row">
+            <input id="playerName" autocomplete="nickname" maxlength="18" placeholder="Inserisci il tuo nome" />
+            <button id="enterArena" class="primary-button" type="button">Entra</button>
+          </div>
+        </div>
+        <p class="owner-line">Un sito di Massimo Torrisi</p>
+      </section>
+
+      <section id="lobbyScreen" class="screen lobby-screen" aria-labelledby="lobbyTitle">
+        <header class="topbar">
+          <button id="homeLogo" class="logo-button" type="button" aria-label="GridRush Arena">
+            <img src="/assets/logo.svg" alt="" />
+          </button>
+          <div class="player-chip">
+            <span id="playerInitial">G</span>
+            <strong id="playerLabel">Giocatore</strong>
+          </div>
+          <div class="theme-picker" aria-label="Tema">
+            <button class="theme-dot" data-theme-choice="neon" type="button" aria-label="Tema neon"></button>
+            <button class="theme-dot" data-theme-choice="solar" type="button" aria-label="Tema solar"></button>
+            <button class="theme-dot" data-theme-choice="mint" type="button" aria-label="Tema mint"></button>
+            <button class="theme-dot" data-theme-choice="mono" type="button" aria-label="Tema mono"></button>
+          </div>
+        </header>
+
+        <div class="lobby-grid">
+          <section class="play-zone" aria-labelledby="lobbyTitle">
+            <p class="kicker">Live puzzle battle</p>
+            <h2 id="lobbyTitle">Scegli la sfida</h2>
+            <div class="duration-grid" role="group" aria-label="Durata partita">
+              <button class="duration-card selected" type="button" data-duration="60">
+                <span>1</span>
+                <small>minuto</small>
+              </button>
+              <button class="duration-card" type="button" data-duration="120">
+                <span>2</span>
+                <small>minuti</small>
+              </button>
+              <button class="duration-card" type="button" data-duration="300">
+                <span>5</span>
+                <small>minuti</small>
+              </button>
+              <button class="duration-card" type="button" data-duration="600">
+                <span>10</span>
+                <small>minuti</small>
+              </button>
+            </div>
+
+            <div class="action-stack">
+              <button id="matchmakeButton" class="primary-button wide" type="button">Trova giocatore online</button>
+              <button id="friendRoomButton" class="secondary-button wide" type="button">Crea stanza amici</button>
+              <div class="join-row">
+                <input id="roomCodeInput" maxlength="8" placeholder="Codice stanza" aria-label="Codice stanza" />
+                <button id="joinRoomButton" class="secondary-button" type="button">Unisciti</button>
+              </div>
+              <button id="practiceButton" class="ghost-button wide" type="button">Allenamento veloce</button>
+            </div>
+          </section>
+
+          <aside class="scenario-zone" aria-label="Situazioni">
+            <div class="section-heading">
+              <p class="kicker">Situazioni</p>
+              <strong id="scenarioName">Griglia pulita</strong>
+            </div>
+            <div id="scenarioList" class="scenario-list"></div>
+            <button id="scenarioPlayButton" class="secondary-button wide" type="button">Gioca situazione</button>
+          </aside>
+        </div>
+        <p class="owner-line docked">Un sito di Massimo Torrisi</p>
+      </section>
+
+      <section id="gameScreen" class="screen game-screen" aria-labelledby="gameTitle">
+        <header class="game-topbar">
+          <button id="backToLobby" class="icon-button" type="button" aria-label="Torna alla lobby">
+            <span aria-hidden="true">&#8592;</span>
+          </button>
+          <div>
+            <p class="kicker" id="matchModeLabel">Arena</p>
+            <h2 id="gameTitle">GridRush</h2>
+          </div>
+          <div class="timer-pill" aria-label="Tempo restante">
+            <span id="timerLabel">01:00</span>
+          </div>
+        </header>
+
+        <div class="game-layout">
+          <section class="board-stage" aria-label="Campo di gioco">
+            <div id="board" class="board" role="grid" aria-label="Griglia 8 per 8"></div>
+            <div id="pieceTray" class="piece-tray" aria-label="Pezzi disponibili"></div>
+          </section>
+
+          <aside class="match-panel">
+            <div class="score-card active-player">
+              <span id="myName">Tu</span>
+              <strong id="myScore">0</strong>
+              <small id="myLines">0 linee</small>
+            </div>
+            <div id="opponentList" class="opponent-list"></div>
+            <div class="room-strip">
+              <span>Stanza</span>
+              <button id="roomCodeButton" type="button">Locale</button>
+            </div>
+            <div class="ad-slot" aria-label="Spazio pubblicitario">
+              <span>AD</span>
+              <strong>GridRush Boost</strong>
+            </div>
+            <button id="restartButton" class="secondary-button wide" type="button">Rigioca</button>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <div id="onlineModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-card">
+        <p class="kicker">Online</p>
+        <h2 id="modalTitle">Stanza pronta</h2>
+        <button id="closeModal" class="icon-button modal-close" type="button" aria-label="Chiudi">
+          <span aria-hidden="true">&#215;</span>
+        </button>
+        <div class="code-display">
+          <span>Codice</span>
+          <strong id="modalRoomCode">------</strong>
+        </div>
+        <p id="modalStatus">In attesa del secondo giocatore...</p>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

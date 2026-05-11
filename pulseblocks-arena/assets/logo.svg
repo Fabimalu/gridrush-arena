@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img" aria-label="GridRush Arena">
+  <defs>
+    <linearGradient id="cyan" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#2fffe2" />
+      <stop offset="1" stop-color="#138dff" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#ffd33d" />
+      <stop offset="1" stop-color="#ff5f8e" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="10" flood-color="#000000" flood-opacity=".42" />
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <rect x="36" y="36" width="72" height="72" rx="14" fill="url(#cyan)" />
+    <rect x="116" y="36" width="72" height="72" rx="14" fill="url(#gold)" />
+    <rect x="36" y="116" width="72" height="72" rx="14" fill="#76ff8e" />
+    <rect x="116" y="116" width="72" height="72" rx="14" fill="#8fa2ff" />
+    <text x="224" y="104" font-family="Arial Black, Arial, sans-serif" font-size="70" fill="#ffffff">GRIDRUSH</text>
+    <text x="228" y="166" font-family="Arial Black, Arial, sans-serif" font-size="48" fill="url(#gold)">ARENA</text>
+  </g>
+</svg>
