@@ -279,9 +279,6 @@
       state.hoverCell = null;
       renderBoard();
     });
-    els.board.addEventListener("dragover", handleBoardDragOver);
-    els.board.addEventListener("drop", handleBoardDrop);
-    els.board.addEventListener("dragleave", handleBoardDragLeave);
 
     els.backToLobby.addEventListener("click", () => {
       stopGame();
@@ -410,6 +407,7 @@
     els.myName.textContent = state.playerName || "Tu";
     els.roomCodeButton.textContent = state.online.roomCode || "Locale";
     showScreen("gameScreen");
+    window.scrollTo(0, 0);
     renderAll();
     syncOnlineState();
 
@@ -497,12 +495,11 @@
         if (index === state.selectedPiece) button.classList.add("selected");
         if (state.dragging.active && state.dragging.index === index) button.classList.add("dragging");
         if (!canAnyFit(piece)) button.classList.add("no-fit");
-        button.draggable = true;
+        button.draggable = false;
         button.appendChild(renderPiecePreview(piece));
         button.addEventListener("pointerdown", (event) => beginPieceDrag(index, event));
         button.addEventListener("mousedown", (event) => beginPieceDrag(index, event));
-        button.addEventListener("dragstart", (event) => beginNativePieceDrag(index, event));
-        button.addEventListener("dragend", () => cancelPieceDrag());
+        button.addEventListener("touchstart", (event) => beginPieceDrag(index, event), { passive: false });
         button.addEventListener("click", () => {
           if (state.dragging.justDragged) return;
           state.selectedPiece = index;
@@ -536,53 +533,6 @@
     return preview;
   }
 
-  function beginNativePieceDrag(index, event) {
-    if (state.locked || state.finished) return;
-    const piece = state.tray[index];
-    if (!piece || !canAnyFit(piece)) {
-      event.preventDefault();
-      return;
-    }
-
-    state.selectedPiece = index;
-    state.dragging.active = true;
-    state.dragging.index = index;
-    state.dragging.moved = true;
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", String(index));
-    renderBoard();
-  }
-
-  function handleBoardDragOver(event) {
-    if (!state.dragging.active) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    const nextHover = cellIndexFromEvent(event);
-    if (state.hoverCell !== nextHover) {
-      state.hoverCell = nextHover;
-      renderBoard();
-    }
-  }
-
-  function handleBoardDrop(event) {
-    if (!state.dragging.active) return;
-    event.preventDefault();
-    const targetCell = cellIndexFromEvent(event);
-    cleanupPieceDrag();
-    if (targetCell !== null) {
-      placeSelectedPiece(targetCell);
-      return;
-    }
-    state.hoverCell = null;
-    renderAll();
-  }
-
-  function handleBoardDragLeave(event) {
-    if (!state.dragging.active || els.board.contains(event.relatedTarget)) return;
-    state.hoverCell = null;
-    renderBoard();
-  }
-
   function beginPieceDrag(index, event) {
     if (state.dragging.active) return;
     if (state.locked || state.finished) return;
@@ -590,51 +540,68 @@
 
     const piece = state.tray[index];
     if (!piece || !canAnyFit(piece)) return;
+    const point = eventPoint(event);
+    if (!point) return;
 
     event.preventDefault();
+    if (event.pointerId !== undefined) {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
     state.selectedPiece = index;
     state.dragging.active = true;
     state.dragging.index = index;
     state.dragging.moved = false;
-    state.dragging.startX = event.clientX;
-    state.dragging.startY = event.clientY;
+    state.dragging.startX = point.x;
+    state.dragging.startY = point.y;
     state.dragging.preview = createDragPreview(piece);
     document.body.classList.add("is-dragging-piece");
     event.currentTarget.classList.add("dragging");
 
-    updatePieceDrag(event);
+    updatePieceDrag(point);
     window.addEventListener("pointermove", movePieceDrag, { passive: false });
     window.addEventListener("pointerup", endPieceDrag);
     window.addEventListener("pointercancel", cancelPieceDrag);
     window.addEventListener("mousemove", movePieceDrag, { passive: false });
     window.addEventListener("mouseup", endPieceDrag);
+    window.addEventListener("touchmove", movePieceDrag, { passive: false });
+    window.addEventListener("touchend", endPieceDrag);
+    window.addEventListener("touchcancel", cancelPieceDrag);
   }
 
   function movePieceDrag(event) {
     if (!state.dragging.active) return;
+    const point = eventPoint(event);
+    if (!point) return;
     event.preventDefault();
-    const dx = Math.abs(event.clientX - state.dragging.startX);
-    const dy = Math.abs(event.clientY - state.dragging.startY);
+    const dx = Math.abs(point.x - state.dragging.startX);
+    const dy = Math.abs(point.y - state.dragging.startY);
     if (dx + dy > 5) state.dragging.moved = true;
-    updatePieceDrag(event);
+    updatePieceDrag(point);
   }
 
-  function updatePieceDrag(event) {
+  function updatePieceDrag(point) {
     if (state.dragging.preview) {
-      state.dragging.preview.style.left = `${event.clientX}px`;
-      state.dragging.preview.style.top = `${event.clientY}px`;
+      state.dragging.preview.style.left = `${point.x}px`;
+      state.dragging.preview.style.top = `${point.y}px`;
     }
 
-    const cell = document.elementFromPoint(event.clientX, event.clientY)?.closest(".cell");
-    const nextHover = cell?.dataset.index ? Number(cell.dataset.index) : null;
+    const nextHover = boardCellFromDragPreview();
     if (state.hoverCell !== nextHover) {
       state.hoverCell = nextHover;
       renderBoard();
     }
   }
 
-  function endPieceDrag() {
+  function endPieceDrag(event) {
     if (!state.dragging.active) return;
+    const point = eventPoint(event);
+    if (point) {
+      if (state.dragging.preview) {
+        state.dragging.preview.style.left = `${point.x}px`;
+        state.dragging.preview.style.top = `${point.y}px`;
+      }
+      state.hoverCell = boardCellFromDragPreview();
+    }
     const targetCell = state.hoverCell;
     const shouldPlace = state.dragging.moved && targetCell !== null;
     cleanupPieceDrag();
@@ -659,6 +626,9 @@
     window.removeEventListener("pointercancel", cancelPieceDrag);
     window.removeEventListener("mousemove", movePieceDrag);
     window.removeEventListener("mouseup", endPieceDrag);
+    window.removeEventListener("touchmove", movePieceDrag);
+    window.removeEventListener("touchend", endPieceDrag);
+    window.removeEventListener("touchcancel", cancelPieceDrag);
     document.body.classList.remove("is-dragging-piece");
     const didMove = state.dragging.moved;
     state.dragging.preview?.remove();
@@ -677,14 +647,99 @@
   function createDragPreview(piece) {
     const preview = document.createElement("div");
     preview.className = "drag-preview";
-    preview.appendChild(renderPiecePreview(piece));
+    preview.appendChild(renderDragPiece(piece));
     document.body.appendChild(preview);
     return preview;
   }
 
-  function cellIndexFromEvent(event) {
-    const cell = event.target?.closest?.(".cell");
-    return cell?.dataset.index ? Number(cell.dataset.index) : null;
+  function renderDragPiece(piece) {
+    const grid = document.createElement("div");
+    const maxRow = Math.max(...piece.cells.map(([row]) => row));
+    const maxCol = Math.max(...piece.cells.map(([, col]) => col));
+    const rows = maxRow + 1;
+    const cols = maxCol + 1;
+    const { cellSize, gap } = getBoardCellMetrics();
+    const occupied = new Set(piece.cells.map(([row, col]) => `${row}:${col}`));
+
+    grid.className = "drag-piece-grid";
+    grid.style.setProperty("--drag-cols", cols);
+    grid.style.setProperty("--drag-cell", `${cellSize}px`);
+    grid.style.setProperty("--drag-gap", `${gap}px`);
+    grid.style.width = `${cols * cellSize + Math.max(0, cols - 1) * gap}px`;
+    grid.style.height = `${rows * cellSize + Math.max(0, rows - 1) * gap}px`;
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const cell = document.createElement("span");
+        cell.className = "piece-cell";
+        if (occupied.has(`${row}:${col}`)) {
+          cell.classList.add("on");
+          setBlockStyle(cell, piece.palette);
+        }
+        grid.appendChild(cell);
+      }
+    }
+
+    return grid;
+  }
+
+  function getBoardCellMetrics() {
+    const rect = els.board.getBoundingClientRect();
+    const style = window.getComputedStyle(els.board);
+    const gap = Number.parseFloat(style.columnGap) || 0;
+    const paddingLeft = Number.parseFloat(style.paddingLeft) || 0;
+    const paddingRight = Number.parseFloat(style.paddingRight) || 0;
+    const paddingTop = Number.parseFloat(style.paddingTop) || 0;
+    const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+    const cellSize = Math.max(22, (rect.width - paddingLeft - paddingRight - gap * (GRID - 1)) / GRID);
+    return { cellSize, gap, paddingLeft, paddingRight, paddingTop, paddingBottom };
+  }
+
+  function eventPoint(event) {
+    const touch = event?.touches?.[0] || event?.changedTouches?.[0];
+    if (touch) return { x: touch.clientX, y: touch.clientY };
+    if (event?.clientX !== undefined && event?.clientY !== undefined) {
+      return { x: event.clientX, y: event.clientY };
+    }
+    return null;
+  }
+
+  function boardCellFromPoint(x, y) {
+    const rect = els.board.getBoundingClientRect();
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      return null;
+    }
+    const col = Math.min(GRID - 1, Math.max(0, Math.floor(((x - rect.left) / rect.width) * GRID)));
+    const row = Math.min(GRID - 1, Math.max(0, Math.floor(((y - rect.top) / rect.height) * GRID)));
+    return pointToIndex(row, col);
+  }
+
+  function boardCellFromDragPreview() {
+    if (!state.dragging.preview) return null;
+    const previewRect = state.dragging.preview.getBoundingClientRect();
+    const boardRect = els.board.getBoundingClientRect();
+    const metrics = getBoardCellMetrics();
+    const step = metrics.cellSize + metrics.gap;
+    const gridLeft = boardRect.left + metrics.paddingLeft;
+    const gridTop = boardRect.top + metrics.paddingTop;
+    const gridRight = boardRect.right - metrics.paddingRight;
+    const gridBottom = boardRect.bottom - metrics.paddingBottom;
+    const pieceCenterX = previewRect.left + metrics.cellSize / 2;
+    const pieceCenterY = previewRect.top + metrics.cellSize / 2;
+
+    if (
+      pieceCenterX < gridLeft ||
+      pieceCenterX > gridRight ||
+      pieceCenterY < gridTop ||
+      pieceCenterY > gridBottom
+    ) {
+      return null;
+    }
+
+    const col = Math.round((previewRect.left - gridLeft) / step);
+    const row = Math.round((previewRect.top - gridTop) / step);
+    if (!isInside(row, col)) return null;
+    return pointToIndex(row, col);
   }
 
   function renderScores() {

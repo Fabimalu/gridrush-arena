@@ -1,9 +1,9 @@
-const CACHE_NAME = "gridrush-arena-v4";
+const CACHE_NAME = "gridrush-arena-v10";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
-  "/styles.css",
-  "/app.js",
+  "/styles.css?v=drag-6",
+  "/app.js?v=drag-6",
   "/assets/icon.svg",
   "/assets/logo.svg",
   "/manifest.json",

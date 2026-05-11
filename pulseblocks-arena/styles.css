@@ -615,6 +615,15 @@ input:focus {
   padding: 10px;
   touch-action: none;
   user-select: none;
+  -webkit-user-drag: none;
+}
+
+.piece-card:not(.disabled) {
+  cursor: grab;
+}
+
+.piece-card * {
+  pointer-events: none;
 }
 
 .piece-card.selected {
@@ -634,26 +643,22 @@ input:focus {
 .piece-card.dragging {
   opacity: 0.48;
   transform: scale(0.96);
+  cursor: grabbing;
 }
 
 .drag-preview {
   position: fixed;
   z-index: 40;
-  width: 116px;
-  height: 116px;
-  display: grid;
-  place-items: center;
   pointer-events: none;
-  transform: translate(-50%, -88%);
-  border: 1px solid color-mix(in srgb, var(--accent) 58%, var(--line));
-  border-radius: var(--radius);
-  background: rgba(5, 13, 24, 0.58);
-  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.42), 0 0 0 5px color-mix(in srgb, var(--accent) 12%, transparent);
-  backdrop-filter: blur(16px);
+  transform: translate(-50%, calc(-100% - 18px));
+  filter: drop-shadow(0 22px 22px rgba(0, 0, 0, 0.4));
 }
 
-.drag-preview .piece-grid {
-  width: 86px;
+.drag-piece-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--drag-cols), var(--drag-cell));
+  grid-auto-rows: var(--drag-cell);
+  gap: var(--drag-gap);
 }
 
 .piece-grid {
