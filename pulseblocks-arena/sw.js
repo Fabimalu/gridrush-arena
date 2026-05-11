@@ -1,4 +1,4 @@
-const CACHE_NAME = "gridrush-arena-v1";
+const CACHE_NAME = "gridrush-arena-v4";
 const STATIC_ASSETS = [
   "/",
   "/index.html",

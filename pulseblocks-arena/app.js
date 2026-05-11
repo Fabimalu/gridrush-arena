@@ -133,6 +133,15 @@
     tray: [],
     selectedPiece: 0,
     hoverCell: null,
+    dragging: {
+      active: false,
+      index: null,
+      moved: false,
+      justDragged: false,
+      startX: 0,
+      startY: 0,
+      preview: null,
+    },
     score: 0,
     lines: 0,
     combo: 0,
@@ -266,9 +275,13 @@
     });
 
     els.board.addEventListener("pointerleave", () => {
+      if (state.dragging.active) return;
       state.hoverCell = null;
       renderBoard();
     });
+    els.board.addEventListener("dragover", handleBoardDragOver);
+    els.board.addEventListener("drop", handleBoardDrop);
+    els.board.addEventListener("dragleave", handleBoardDragLeave);
 
     els.backToLobby.addEventListener("click", () => {
       stopGame();
@@ -378,6 +391,7 @@
     state.locked = false;
     state.clearSet = new Set();
     state.hoverCell = null;
+    cancelPieceDrag(false);
     state.selectedPiece = 0;
     state.duration = config.duration;
     state.scenario = config.scenario;
@@ -437,6 +451,7 @@
     const hover = state.hoverCell;
     const ghost = selected && hover !== null ? getGhost(selected, indexToPoint(hover)) : null;
 
+    board.classList.toggle("drag-over", state.dragging.active && hover !== null);
     board.innerHTML = "";
     for (let i = 0; i < GRID * GRID; i += 1) {
       const cellData = state.board[i];
@@ -480,9 +495,16 @@
         button.classList.add("disabled");
       } else {
         if (index === state.selectedPiece) button.classList.add("selected");
+        if (state.dragging.active && state.dragging.index === index) button.classList.add("dragging");
         if (!canAnyFit(piece)) button.classList.add("no-fit");
+        button.draggable = true;
         button.appendChild(renderPiecePreview(piece));
+        button.addEventListener("pointerdown", (event) => beginPieceDrag(index, event));
+        button.addEventListener("mousedown", (event) => beginPieceDrag(index, event));
+        button.addEventListener("dragstart", (event) => beginNativePieceDrag(index, event));
+        button.addEventListener("dragend", () => cancelPieceDrag());
         button.addEventListener("click", () => {
+          if (state.dragging.justDragged) return;
           state.selectedPiece = index;
           state.hoverCell = null;
           renderAll();
@@ -512,6 +534,157 @@
       preview.appendChild(cell);
     }
     return preview;
+  }
+
+  function beginNativePieceDrag(index, event) {
+    if (state.locked || state.finished) return;
+    const piece = state.tray[index];
+    if (!piece || !canAnyFit(piece)) {
+      event.preventDefault();
+      return;
+    }
+
+    state.selectedPiece = index;
+    state.dragging.active = true;
+    state.dragging.index = index;
+    state.dragging.moved = true;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(index));
+    renderBoard();
+  }
+
+  function handleBoardDragOver(event) {
+    if (!state.dragging.active) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const nextHover = cellIndexFromEvent(event);
+    if (state.hoverCell !== nextHover) {
+      state.hoverCell = nextHover;
+      renderBoard();
+    }
+  }
+
+  function handleBoardDrop(event) {
+    if (!state.dragging.active) return;
+    event.preventDefault();
+    const targetCell = cellIndexFromEvent(event);
+    cleanupPieceDrag();
+    if (targetCell !== null) {
+      placeSelectedPiece(targetCell);
+      return;
+    }
+    state.hoverCell = null;
+    renderAll();
+  }
+
+  function handleBoardDragLeave(event) {
+    if (!state.dragging.active || els.board.contains(event.relatedTarget)) return;
+    state.hoverCell = null;
+    renderBoard();
+  }
+
+  function beginPieceDrag(index, event) {
+    if (state.dragging.active) return;
+    if (state.locked || state.finished) return;
+    if (event.button !== undefined && event.button !== 0) return;
+
+    const piece = state.tray[index];
+    if (!piece || !canAnyFit(piece)) return;
+
+    event.preventDefault();
+    state.selectedPiece = index;
+    state.dragging.active = true;
+    state.dragging.index = index;
+    state.dragging.moved = false;
+    state.dragging.startX = event.clientX;
+    state.dragging.startY = event.clientY;
+    state.dragging.preview = createDragPreview(piece);
+    document.body.classList.add("is-dragging-piece");
+    event.currentTarget.classList.add("dragging");
+
+    updatePieceDrag(event);
+    window.addEventListener("pointermove", movePieceDrag, { passive: false });
+    window.addEventListener("pointerup", endPieceDrag);
+    window.addEventListener("pointercancel", cancelPieceDrag);
+    window.addEventListener("mousemove", movePieceDrag, { passive: false });
+    window.addEventListener("mouseup", endPieceDrag);
+  }
+
+  function movePieceDrag(event) {
+    if (!state.dragging.active) return;
+    event.preventDefault();
+    const dx = Math.abs(event.clientX - state.dragging.startX);
+    const dy = Math.abs(event.clientY - state.dragging.startY);
+    if (dx + dy > 5) state.dragging.moved = true;
+    updatePieceDrag(event);
+  }
+
+  function updatePieceDrag(event) {
+    if (state.dragging.preview) {
+      state.dragging.preview.style.left = `${event.clientX}px`;
+      state.dragging.preview.style.top = `${event.clientY}px`;
+    }
+
+    const cell = document.elementFromPoint(event.clientX, event.clientY)?.closest(".cell");
+    const nextHover = cell?.dataset.index ? Number(cell.dataset.index) : null;
+    if (state.hoverCell !== nextHover) {
+      state.hoverCell = nextHover;
+      renderBoard();
+    }
+  }
+
+  function endPieceDrag() {
+    if (!state.dragging.active) return;
+    const targetCell = state.hoverCell;
+    const shouldPlace = state.dragging.moved && targetCell !== null;
+    cleanupPieceDrag();
+    if (shouldPlace) {
+      placeSelectedPiece(targetCell);
+      return;
+    }
+    state.hoverCell = null;
+    renderAll();
+  }
+
+  function cancelPieceDrag(render = true) {
+    if (!state.dragging.active && !state.dragging.preview) return;
+    cleanupPieceDrag();
+    state.hoverCell = null;
+    if (render) renderAll();
+  }
+
+  function cleanupPieceDrag() {
+    window.removeEventListener("pointermove", movePieceDrag);
+    window.removeEventListener("pointerup", endPieceDrag);
+    window.removeEventListener("pointercancel", cancelPieceDrag);
+    window.removeEventListener("mousemove", movePieceDrag);
+    window.removeEventListener("mouseup", endPieceDrag);
+    document.body.classList.remove("is-dragging-piece");
+    const didMove = state.dragging.moved;
+    state.dragging.preview?.remove();
+    state.dragging.active = false;
+    state.dragging.index = null;
+    state.dragging.moved = false;
+    state.dragging.preview = null;
+    if (didMove) {
+      state.dragging.justDragged = true;
+      window.setTimeout(() => {
+        state.dragging.justDragged = false;
+      }, 150);
+    }
+  }
+
+  function createDragPreview(piece) {
+    const preview = document.createElement("div");
+    preview.className = "drag-preview";
+    preview.appendChild(renderPiecePreview(piece));
+    document.body.appendChild(preview);
+    return preview;
+  }
+
+  function cellIndexFromEvent(event) {
+    const cell = event.target?.closest?.(".cell");
+    return cell?.dataset.index ? Number(cell.dataset.index) : null;
   }
 
   function renderScores() {
